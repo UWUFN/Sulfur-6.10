@@ -34,7 +34,7 @@ void* ProcessEventHook(UObject* Object, UFunction* Function, void* Params)
 
 	if (FuncName.contains("ServerAcknowledgePossession"))
 	{
-		((AFortPlayerController*)Object)->AcknowledgedPawn = *(APlayerPawn_Athena_C**)Params;
+		((AFortPlayerController*)Object)->AcknowledgedPawn = *(APawn**)Params;
 	}
 
 	if (FuncName.contains("ReadyToEndMatch"))
