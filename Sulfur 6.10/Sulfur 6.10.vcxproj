@@ -157,9 +157,7 @@
     <ClInclude Include="Constants.hpp" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Globals.hpp" />
-    <ClInclude Include="Inventory.hpp" />
     <ClInclude Include="Memory.hpp" />
-    <ClInclude Include="Replication.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
