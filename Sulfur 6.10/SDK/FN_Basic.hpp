@@ -408,32 +408,72 @@ enum EName : int32_t
 	NAME_MaxHardcodedNameIndex
 };
 
+struct FName;
+
+
 struct FName
 {
 	int32_t ComparisonIndex;
 	int32_t Number;
 
-	std::string ToString()
+	FName() = default;
+
+	FName(int32_t Name)
 	{
-		FString Temp;
-
-		FNameToString(this, Temp);
-
-		auto Str = std::string(Temp.ToString());
-
-		FreeMemory((void*)(Temp.c_str()));
-
-		return Str;
+		ComparisonIndex = Name;
 	}
 
 	FName(EName Name)
 	{
-		Number = 0;
-		ComparisonIndex = (int32_t)Name;
+		ComparisonIndex = Name;
 	}
 
-	FName()
+	std::string ToString()
 	{
+		if (!this)
+			return "";
+
+		FString temp;
+
+		FNameToString(this, temp);
+
+		auto wName = std::wstring(temp.c_str());
+		auto name = std::string(wName.begin(), wName.end());
+
+		FreeMemory((void*)temp.c_str());
+
+		return name;
+	}
+
+	bool operator==(EName Name)
+	{
+		return ComparisonIndex == Name;
+	}
+
+	bool operator==(const FName& Other)
+	{
+		return ComparisonIndex == Other.ComparisonIndex;
+	}
+
+	bool operator!=(const FName& Other)
+	{
+		return ComparisonIndex != Other.ComparisonIndex;
+	}
+
+	std::wstring ToWString()
+	{
+		if (!this)
+			return L"";
+
+		FString temp;
+
+		FNameToString(this, temp);
+
+		auto wName = std::wstring(temp.c_str());
+
+		FreeMemory((void*)temp.c_str());
+
+		return wName;
 	}
 };
 
