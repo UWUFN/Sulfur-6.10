@@ -1,6 +1,5 @@
 #include "framework.h"
 #include <iostream>
-#include "Replication.hpp"
 #include "minhook/minhook.h"
 #pragma comment(lib, "minhook/minhook.lib")
 
@@ -110,7 +109,7 @@ void* ProcessEventHook(UObject* Object, UFunction* Function, void* Params)
 				auto stateF = reinterpret_cast<UKismetStringLibrary*>(UKismetStringLibrary::StaticClass())->STATIC_Conv_StringToName(L"InProgress");
 				authGameMode->MatchState = stateF;
 				authGameMode->K2_OnSetMatchState(stateF);
-
+				authGameMode->bEnableReplicationGraph = true;
 			}
 		}
 	}
@@ -118,14 +117,16 @@ void* ProcessEventHook(UObject* Object, UFunction* Function, void* Params)
 	return ProcessEvent(Object, Function, Params);
 }
 
-static void TickFlushHook(UNetDriver* NetDriver)
+inline void (*o_TickFlush)(UNetDriver* Driver, float DeltaSeconds);
+inline void TickFlushHook(UNetDriver* Driver, float DeltaSeconds)
 {
-	if (NetDriver->ClientConnections.Num() != 0 && NetDriver->ClientConnections[0]->InternalAck == false)
-	{
-		Replication::Tick(NetDriver);
-	}
+	auto NetDriver = Globals::GetWorld()->NetDriver;
 
-	TickFlush(NetDriver);
+	if (NetDriver && NetDriver->ClientConnections.Num() && !NetDriver->ClientConnections[0]->InternalAck)
+		if (auto ReplicationDriver = NetDriver->ReplicationDriver)
+			UReplicationDriver* ServerReplicateActors(ReplicationDriver);
+
+	return o_TickFlush(NetDriver, DeltaSeconds);
 }
 
 char KickPlayerHook(__int64, __int64, __int64) 
@@ -218,9 +219,7 @@ void Main()
 	MH_CreateHook((void*)(BaseAddr + 0x2706E30), SetClientLoginStateHook, (void**)&SetClientLoginState);
 	MH_EnableHook((void*)(BaseAddr + 0x2706E30));
 
-	Replication::Initialize();
-
-	MH_CreateHook((void*)(BaseAddr + 0x29D5290), Replication::AddNetworkActorHook, (void**)&Replication::AddNetworkActor);
+	// MH_CreateHook((void*)(BaseAddr + 0x29D5290), Replication::AddNetworkActorHook, (void**)&Replication::AddNetworkActor);
 	MH_EnableHook((void*)(BaseAddr + 0x29D5290));
 
 	printf("[+] hooked all the shit. click play\n");
