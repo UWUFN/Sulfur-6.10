@@ -26,8 +26,6 @@ Sulfur 6.10/x64/Release/vc143.pdb
 .vs/Sulfur 6.10/v17/Browse.VC.db-wal
 .vs/Sulfur 6.10/v17/Browse.VC.opendb
 .vs/Sulfur 6.10/v17/ipch/a63a29ecd29e1218.ipch
-<<<<<<< Updated upstream
-=======
 .vs/Sulfur 6.10/FileContentIndex/ad44f9d4-06bb-4b05-adcf-467c970ca48c.vsidx
 .vs/Sulfur 6.10/v17/.suo
 .vs/Sulfur 6.10/v17/ipch/AutoPCH/5364844d6fb27ab2/DLLMAIN.ipch
@@ -38,8 +36,3 @@ Sulfur 6.10/x64/Debug/Sulfur 6.10.tlog/unsuccessfulbuild
 Sulfur 6.10/x64/Release/FN_FortniteGame_functions.obj
 x64/Release/Sulfur 6.10.dll
 x64/Release/Sulfur 6.10.pdb
-*.vsidx
-*.bin
-*.ipch
-Sulfur 6.10/x64/Release/Sulfur 6.10.tlog/CL.17732.write.1.tlog
->>>>>>> Stashed changes
