@@ -36,3 +36,7 @@ Sulfur 6.10/x64/Debug/Sulfur 6.10.tlog/unsuccessfulbuild
 Sulfur 6.10/x64/Release/FN_FortniteGame_functions.obj
 x64/Release/Sulfur 6.10.dll
 x64/Release/Sulfur 6.10.pdb
+.vs/Sulfur 6.10/FileContentIndex/21f96cc3-e35e-42ef-869c-3eff6ffabc57.vsidx
+*.vsidx
+*.bin
+*.ipch
