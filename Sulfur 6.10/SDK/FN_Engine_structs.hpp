@@ -9054,7 +9054,43 @@ struct FCurveTableRowHandle
 // 0x00B0
 struct FFastArraySerializer
 {
-	unsigned char                                      UnknownData00[0xB0];                                      // 0x0000(0x00B0) MISSED OFFSET
+	char ItemMap[0x50];
+	int32_t IDCounter;
+	int32_t ArrayReplicationKey;
+
+	char GuidReferencesMap[0x50]; // List of items that need to be re-serialized when the referenced objects are mapped
+	int32_t CachedNumItems;
+	int32_t CachedNumItemsToConsiderForWriting;
+
+	void MarkItemDirty(FFastArraySerializerItem& Item)
+	{
+		if (Item.ReplicationID == -1)
+		{
+			Item.ReplicationID = ++IDCounter;
+			if (IDCounter == -1)
+				IDCounter++;
+		}
+
+		Item.ReplicationKey++;
+		MarkArrayDirty();
+	}
+
+	void MarkArrayDirty()
+	{
+		// This allows to clients to add predictive elements to arrays without affecting replication.
+		IncrementArrayReplicationKey();
+
+		// Invalidate the cached item counts so that they're recomputed during the next write
+		CachedNumItems = -1;
+		CachedNumItemsToConsiderForWriting = -1;
+	}
+
+	void IncrementArrayReplicationKey()
+	{
+		ArrayReplicationKey++;
+		if (ArrayReplicationKey == -1)
+			ArrayReplicationKey++;
+	}
 };
 
 // ScriptStruct Engine.PerPlatformBool

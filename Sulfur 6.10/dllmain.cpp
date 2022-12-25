@@ -1,6 +1,7 @@
 #include "framework.h"
 #include <iostream>
 #include "minhook/minhook.h"
+#include "Inventory.hpp"
 #pragma comment(lib, "minhook/minhook.lib")
 
 void* (*ProcessEvent)(void*, void*, void*);
@@ -11,6 +12,8 @@ static inline void (*InitListen)(UNetDriver*, void*, FURL, bool, FString&);
 void (*SetReplicationDriver)(UNetDriver*, UReplicationDriver*);
 char (*LoadMap)(UGameEngine*, void*, FURL, void*, void*);
 static inline void (*ServerReplicateActors)(UReplicationGraph* RepGraph);
+static void (*MarkArrayDirty)(FFastArraySerializer*);
+
 inline bool bTraveled = false;
 inline bool bPlayButton = false;
 inline bool bListening = false;
@@ -93,6 +96,7 @@ static void Listen()
 
 	ServerReplicateActors = decltype(ServerReplicateActors)(Beacon->NetDriver->ReplicationDriver->Vtable[0x56]);
 }
+
 void* ProcessEventHook(UObject* Object, UFunction* Function, void* Params)
 {
 	if (!Object || !Function)
@@ -134,7 +138,7 @@ void* ProcessEventHook(UObject* Object, UFunction* Function, void* Params)
 				GameState->AircraftStartTime = 99999.0f;
 				GameState->WarmupCountdownEndTime = 99999.0f;
 
-				GameState->GamePhase = EAthenaGamePhase::Aircraft;
+				GameState->GamePhase = EAthenaGamePhase::Warmup;
 				GameState->OnRep_GamePhase(EAthenaGamePhase::None);
 
 				auto Playlist = UObject::FindObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo");
@@ -186,6 +190,7 @@ inline FVector GetPlayerStartLocation()
 	return PlayerStarts.Num() > 0 ? PlayerStarts[rand() % PlayerStarts.Num()]->K2_GetActorLocation() : FVector{ 1250, 1818, 3284 };
 }
 
+
 class Core
 {
 public:
@@ -234,11 +239,13 @@ static inline void SetClientLoginStateHook(UNetConnection* NetConnection, uint8_
 		PlayerState->CharacterParts.Parts[1] = UObject::FindObject<UCustomCharacterPart>("CustomCharacterPart F_Med_Soldier_01.F_Med_Soldier_01");
 		PlayerState->OnRep_CharacterParts();
 
+		// Inventory::Setup(PlayerController);
+		// Inventory::Update(PlayerController);
+
 		PlayerController->bHasServerFinishedLoading = true;
 		PlayerController->OnRep_bHasServerFinishedLoading();
 
 		PlayerController->OverriddenBackpackSize = 5;
-
 
 		PlayerState->OnRep_SquadId();
 
