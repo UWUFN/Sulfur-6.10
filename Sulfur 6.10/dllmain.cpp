@@ -5,18 +5,94 @@
 
 void* (*ProcessEvent)(void*, void*, void*);
 UNetDriver* (*CreateNetDriver)(UEngine*, UWorld*, FName);
-char (*InitListen)(UIpNetDriver*, void* Notify, FURL&, char, FString&);
-void (*SetWorld)(UNetDriver*, UWorld*);
-void (*TickFlush)(UNetDriver*);
-void (*ServerReplicateActors)(UReplicationGraph*);
+static inline bool (*InitHost)(AOnlineBeaconHost*);
+static inline void (*SetWorld)(UNetDriver*, UWorld*);
+static inline void (*InitListen)(UNetDriver*, void*, FURL, bool, FString&);
 void (*SetReplicationDriver)(UNetDriver*, UReplicationDriver*);
 char (*LoadMap)(UGameEngine*, void*, FURL, void*, void*);
-static void* (*SetClientLoginState)(UNetConnection* Connection, int a2);
-
+static inline void (*ServerReplicateActors)(UReplicationGraph* RepGraph);
 inline bool bTraveled = false;
 inline bool bPlayButton = false;
 inline bool bListening = false;
 
+
+template <typename T>
+inline T* GetDefaultObject()
+{
+	return T::StaticClass()->CreateDefaultObject<T>();
+}
+
+template <typename T>
+inline T* NewObject(UObject* Outer, UClass* ObjClass = T::StaticClass())
+{
+	return (T*)GetDefaultObject<UGameplayStatics>()->STATIC_SpawnObject(ObjClass, Outer);
+}
+
+template <typename T>
+inline T* SpawnActor(FVector Loc = {}, FRotator Rot = {}, UClass* ActorClass = T::StaticClass())
+{
+	FQuat Quat;
+	FTransform Transform;
+
+	auto DEG_TO_RAD = 3.14159 / 180;
+	auto DIVIDE_BY_2 = DEG_TO_RAD / 2;
+
+	auto SP = sin(Rot.Pitch * DIVIDE_BY_2);
+	auto CP = cos(Rot.Pitch * DIVIDE_BY_2);
+
+	auto SY = sin(Rot.Yaw * DIVIDE_BY_2);
+	auto CY = cos(Rot.Yaw * DIVIDE_BY_2);
+
+	auto SR = sin(Rot.Roll * DIVIDE_BY_2);
+	auto CR = cos(Rot.Roll * DIVIDE_BY_2);
+
+	Quat.X = CR * SP * SY - SR * CP * CY;
+	Quat.Y = -CR * SP * CY - SR * CP * SY;
+	Quat.Z = CR * CP * SY - SR * SP * CY;
+	Quat.W = CR * CP * CY + SR * SP * SY;
+
+	Transform.Rotation = Quat;
+	Transform.Scale3D = FVector{ 1,1,1 };
+	Transform.Translation = Loc;
+
+	auto Actor = GetDefaultObject<UGameplayStatics>()->STATIC_BeginSpawningActorFromClass(Globals::GetWorld(), ActorClass, Transform, false, nullptr);
+	GetDefaultObject<UGameplayStatics>()->STATIC_FinishSpawningActor(Actor, Transform);
+	return (T*)Actor;
+}
+
+static void Listen()
+{
+
+	auto BaseAddr = (uintptr_t)GetModuleHandleA(0);
+	auto Beacon = SpawnActor<AOnlineBeaconHost>();
+	Beacon->ListenPort = 6969;
+	InitHost(Beacon);
+
+	Beacon->NetDriverName = FName(282);
+	Beacon->NetDriver->NetDriverName = FName(282);
+	Beacon->NetDriver->World = Globals::GetWorld();
+
+	FURL Url;
+	Url.Port = 7777;
+
+	FString Error;
+
+	InitListen((UIpNetDriver*)Beacon->NetDriver, Globals::GetWorld(), Url, false, Error);
+
+	Globals::GetWorld()->NetDriver = Beacon->NetDriver;
+	SetWorld(Beacon->NetDriver, Globals::GetWorld());
+
+	Globals::GetWorld()->LevelCollections[0].NetDriver = Beacon->NetDriver;
+	Globals::GetWorld()->LevelCollections[1].NetDriver = Beacon->NetDriver;
+
+	if (!Beacon->NetDriver->ReplicationDriver)
+	{
+		static auto SetReplicationDriver = reinterpret_cast<void(*)(UNetDriver*, UReplicationDriver*)>(BaseAddr + 0x2707D20);
+		SetReplicationDriver(Beacon->NetDriver, NewObject<UFortReplicationGraph>(Beacon->NetDriver));
+	}
+
+	ServerReplicateActors = decltype(ServerReplicateActors)(Beacon->NetDriver->ReplicationDriver->Vtable[0x56]);
+}
 void* ProcessEventHook(UObject* Object, UFunction* Function, void* Params)
 {
 	if (!Object || !Function)
@@ -42,42 +118,15 @@ void* ProcessEventHook(UObject* Object, UFunction* Function, void* Params)
 			bListening = false;
 	}
 
-	/*if (FuncName.contains("ServerPlayEmoteItem"))
-	{
-		static bool bFirst = true;
-
-		if (bFirst)
-		{
-			bFirst = false;
-			srand(time(0));
-		}
-
-		static auto DefaultAbility = UObject::FindObject<UGameplayAbility>("GAB_Emote_Generic_C GAB_Emote_Generic.Default__GAB_Emote_Generic_C");
-		unsigned int* (*GiveAbilityAndActivateOnce)(UAbilitySystemComponent * ASC, int* outHandle, FGameplayAbilitySpec Spec) = decltype(GiveAbilityAndActivateOnce)(__int64(GetModuleHandleW(0)) + 0x613b00);
-		int OutHandle = 0;
-		FGameplayAbilitySpec Spec = FGameplayAbilitySpec(-1, -1, -1, rand(), DefaultAbility, 1, -1, *(UObject**)Params);
-		GiveAbilityAndActivateOnce(((AFortPawn*)((AFortPlayerController*)Object)->Pawn)->AbilitySystemComponent, &OutHandle, Spec);
-	}*/
-
 	if (FuncName.contains("ReadyToStartMatch"))
 	{
 		if (!bListening)
 		{
 			bListening = true;
 
-			if (Globals::GEngine->GameViewport->World && !Globals::GEngine->GameViewport->World->NetDriver)
-			{
-				auto URL = FURL();
-				URL.Port = 7777;
 
-				FString Error;
-				auto NetDriver = (UIpNetDriver*)CreateNetDriver(Globals::GEngine, Globals::GEngine->GameViewport->World, NAME_GameNetDriver);
-				InitListen(NetDriver, Globals::GEngine->GameViewport->World, URL, false, Error);
-				SetWorld(NetDriver, Globals::GEngine->GameViewport->World);
-				//Globals::GEngine->GameViewport->World->LevelCollections[0].NetDriver = NetDriver;
-				Globals::GEngine->GameViewport->World->LevelCollections[1].NetDriver = NetDriver;
-				Globals::GEngine->GameViewport->World->NetDriver = NetDriver;
-				NetDriver->MaxClientRate = NetDriver->MaxInternetClientRate;
+
+				Listen();
 
 				auto GameState = (AFortGameStateAthena*)Globals::GetWorld()->GameState;
 
@@ -109,77 +158,97 @@ void* ProcessEventHook(UObject* Object, UFunction* Function, void* Params)
 				auto stateF = reinterpret_cast<UKismetStringLibrary*>(UKismetStringLibrary::StaticClass())->STATIC_Conv_StringToName(L"InProgress");
 				authGameMode->MatchState = stateF;
 				authGameMode->K2_OnSetMatchState(stateF);
-				authGameMode->bEnableReplicationGraph = true;
 			}
-		}
 	}
 
 	return ProcessEvent(Object, Function, Params);
 }
 
-inline void (*o_TickFlush)(UNetDriver* Driver, float DeltaSeconds);
-inline void TickFlushHook(UNetDriver* Driver, float DeltaSeconds)
+static inline void (*TickFlush)(UNetDriver*);
+static inline void TickFlushHook(UNetDriver* NetDriver)
 {
-	auto NetDriver = Globals::GetWorld()->NetDriver;
+	if (NetDriver->ReplicationDriver)
+	{
+		ServerReplicateActors((UReplicationGraph*)NetDriver->ReplicationDriver);
+	}
 
-	if (NetDriver && NetDriver->ClientConnections.Num() && !NetDriver->ClientConnections[0]->InternalAck)
-		if (auto ReplicationDriver = NetDriver->ReplicationDriver)
-			UReplicationDriver* ServerReplicateActors(ReplicationDriver);
-
-	return o_TickFlush(NetDriver, DeltaSeconds);
+	return TickFlush(NetDriver);
 }
 
 char KickPlayerHook(__int64, __int64, __int64) 
 {
 	return 0;
 }
-
-static void* SetClientLoginStateHook(UNetConnection* Connection, int a2)
+inline FVector GetPlayerStartLocation()
 {
-	if (a2 == 3)
+	TArray<AActor*> PlayerStarts;
+	GetDefaultObject<UGameplayStatics>()->STATIC_GetAllActorsOfClass(Globals::GetWorld(), APlayerStart::StaticClass(), &PlayerStarts);
+	return PlayerStarts.Num() > 0 ? PlayerStarts[rand() % PlayerStarts.Num()]->K2_GetActorLocation() : FVector{ 1250, 1818, 3284 };
+}
+
+class Core
+{
+public:
+	static inline bool bIsInProgress = false;
+
+	static inline UFortEngine* FortEngine;
+	static inline UClass* PawnClass;
+
+public:
+	static inline void Init()
 	{
-		auto PlayerController = (AFortPlayerControllerAthena*)Connection->PlayerController;
-		AFortPlayerStateAthena* PlayerState = (AFortPlayerStateAthena*)PlayerController->PlayerState;
+		FortEngine = UObject::FindObject<UFortEngine>("FortEngine_");
+		PawnClass = APlayerPawn_Athena_C::StaticClass();
 
-		auto Pawn = Globals::GetWorld()->SpawnActor<APlayerPawn_Athena_C>(PlayerController->K2_GetActorLocation(), {});
-		Pawn->SetOwner(PlayerController);
-		
-		Connection->CurrentNetSpeed = 30000;
 
+	}
+};
+
+static inline void (*SetClientLoginState)(UNetConnection*, uint8_t);
+static inline void SetClientLoginStateHook(UNetConnection* NetConnection, uint8_t State)
+{
+	if (State == 3)
+	{
+		static bool bSpawnedFloorLoot = false;
+		if (!bSpawnedFloorLoot)
+		{
+			bSpawnedFloorLoot = true;
+		}
+
+		auto PlayerController = (AFortPlayerControllerAthena*)(NetConnection->PlayerController);
+
+		if (!PlayerController)
+			return;
+
+		auto Pawn = SpawnActor<APlayerPawn_Athena_C>(GetPlayerStartLocation(), { 0,0,0 }, Core::PawnClass);
+
+		if (!Pawn)
+			return;
+
+		Pawn->bCanBeDamaged = false;
 		PlayerController->Possess(Pawn);
 
-		PlayerController->bHasClientFinishedLoading = true;
-		PlayerController->bHasServerFinishedLoading = true;
-		PlayerController->OnRep_bHasServerFinishedLoading();
-
-		PlayerState->bHasFinishedLoading = true;
-		PlayerState->bHasStartedPlaying = true;
-		PlayerState->OnRep_bHasStartedPlaying();
-
-		auto QuickBars = Globals::GetWorld()->SpawnActor<AFortQuickBars>({ -280, 400, 3000 }, {});
-		QuickBars->SetOwner(PlayerController);
-		PlayerController->QuickBars = QuickBars;
+		auto PlayerState = (AFortPlayerStateAthena*)(PlayerController->PlayerState);
 
 		PlayerState->CharacterParts.Parts[0] = UObject::FindObject<UCustomCharacterPart>("CustomCharacterPart F_Med_Head1.F_Med_Head1");
 		PlayerState->CharacterParts.Parts[1] = UObject::FindObject<UCustomCharacterPart>("CustomCharacterPart F_Med_Soldier_01.F_Med_Soldier_01");
 		PlayerState->OnRep_CharacterParts();
 
-		Pawn->bReplicates = true;
-		Pawn->bReplicateMovement = true;
-		Pawn->OnRep_ReplicateMovement();
-		Pawn->OnRep_ReplicatedMovement();
-		Pawn->OnRep_ReplicatedBasedMovement();
-		Pawn->SetMaxHealth(100);
-		Pawn->SetMaxShield(100);
-		Pawn->SetHealth(100);
-		Pawn->NetUpdateFrequency *= 2;
+		PlayerController->bHasServerFinishedLoading = true;
+		PlayerController->OnRep_bHasServerFinishedLoading();
+
+		PlayerController->OverriddenBackpackSize = 5;
 
 
-		auto spawnhere = FVector({ 1250, 1818, 3284 });
-		Pawn->K2_SetActorLocation(spawnhere, false, true, nullptr);
+		PlayerState->OnRep_SquadId();
+
+		PlayerState->bHasFinishedLoading = true;
+		PlayerState->bHasStartedPlaying = true;
+		PlayerState->OnRep_bHasStartedPlaying();
+
 	}
 
-	return SetClientLoginState(Connection, a2);
+	return SetClientLoginState(NetConnection, State);
 }
 
 void Main()
@@ -200,13 +269,14 @@ void Main()
 	UObject::GObjects = decltype(UObject::GObjects)(ObjectsAddress);
 	FNameToString = decltype(FNameToString)(ToStringAddress);
 	FreeMemory = decltype(FreeMemory)(FreeAddress);
-	CreateNetDriver = decltype(CreateNetDriver)(BaseAddr + 0x2975F20);
 	InitListen = decltype(InitListen)(BaseAddr + 0x40C9D0);
+	InitHost = decltype(InitHost)(Memory::FindPattern("48 8B C4 48 81 EC ? ? ? ? 48 89 58 18 4C 8D 05 ? ? ? ?"));
 	SetWorld = decltype(SetWorld)(BaseAddr + 0x27080E0);
 	SetReplicationDriver = decltype(SetReplicationDriver)(BaseAddr + 0x2707D20);
 
 	Globals::GEngine = UObject::FindObject<UFortEngine>("FortEngine_", false);
 
+	Core::Init();
 	auto vtable = *reinterpret_cast<void***>(static_cast<void*>(Globals::GEngine));
 
 	MH_Initialize();
@@ -220,7 +290,6 @@ void Main()
 	MH_EnableHook((void*)(BaseAddr + 0x2706E30));
 
 	// MH_CreateHook((void*)(BaseAddr + 0x29D5290), Replication::AddNetworkActorHook, (void**)&Replication::AddNetworkActor);
-	MH_EnableHook((void*)(BaseAddr + 0x29D5290));
 
 	printf("[+] hooked all the shit. click play\n");
 	//Start();
