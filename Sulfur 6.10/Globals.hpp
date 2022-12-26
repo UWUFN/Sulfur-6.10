@@ -21,6 +21,15 @@ namespace Globals
     {
         return Globals::GEngine->GameViewport->World;
     }
+
+    template <typename T>
+    static T* FindObjectFast(std::string ObjectName, UClass* ObjectClass = UObject::StaticClass())
+    {
+        auto OrigInName = std::wstring(ObjectName.begin(), ObjectName.end()).c_str();
+
+        auto StaticFindObject = (T * (*)(UClass*, UObject * Package, const wchar_t* OrigInName, bool ExactClass))((uintptr_t)GetModuleHandleA(0) + 0x13DE630);
+        return StaticFindObject(ObjectClass, nullptr, OrigInName, false);
+    }
 }
 
 static std::vector<std::string> Split(std::string s, std::string delimiter)
@@ -38,6 +47,7 @@ static std::vector<std::string> Split(std::string s, std::string delimiter)
     res.push_back(s.substr(pos_start));
     return res;
 }
+
 
 //static inline Start()
 //{
