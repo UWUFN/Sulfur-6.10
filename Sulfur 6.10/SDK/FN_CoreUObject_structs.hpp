@@ -298,6 +298,19 @@ struct FGuid
 	int                                                B;                                                        // 0x0004(0x0004) (Edit, ZeroConstructor, SaveGame, IsPlainOldData)
 	int                                                C;                                                        // 0x0008(0x0004) (Edit, ZeroConstructor, SaveGame, IsPlainOldData)
 	int                                                D;                                                        // 0x000C(0x0004) (Edit, ZeroConstructor, SaveGame, IsPlainOldData)
+
+	bool operator==(const FGuid& Guid)
+	{
+		return A == Guid.A && B == Guid.B && C == Guid.C && D == Guid.D;
+	}
+
+	void Reset()
+	{
+		A = 0;
+		B = 0;
+		C = 0;
+		D = 0;
+	}
 };
 
 // ScriptStruct CoreUObject.Vector
