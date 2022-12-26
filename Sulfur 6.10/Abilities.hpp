@@ -50,12 +50,12 @@ namespace Abilities
         static auto TrapAbilitySet = UObject::FindObject<UFortAbilitySet>("FortAbilitySet GAS_TrapGeneric.GAS_TrapGeneric");
 
         GrantGameplayAbility(Pawn, SprintAbility);
-        GrantGameplayAbility(Pawn, ReloadAbility);
+        /*GrantGameplayAbility(Pawn, ReloadAbility);
         GrantGameplayAbility(Pawn, RangedWeaponAbility);
         GrantGameplayAbility(Pawn, JumpAbility);
         GrantGameplayAbility(Pawn, DeathAbility);
         GrantGameplayAbility(Pawn, InteractUseAbility);
         GrantGameplayAbility(Pawn, InteractSearchAbility);
-        GrantGameplayAbility(Pawn, EmoteAbility);
+        GrantGameplayAbility(Pawn, EmoteAbility);*/
     }
 }

@@ -189,11 +189,16 @@ public:
 
 	static void Update(AFortPlayerController* PlayerController)
 	{
-		PlayerController->WorldInventory->Inventory.MarkArrayDirty();
+		// PlayerController->WorldInventory->Inventory.MarkArrayDirty();
 
 		PlayerController->HandleWorldInventoryLocalUpdate();
+		PlayerController->WorldInventory->bRequiresLocalUpdate = true;
+		PlayerController->QuickBars->ForceNetUpdate();
 		PlayerController->WorldInventory->HandleInventoryLocalUpdate();
 		PlayerController->ForceUpdateQuickbar(EFortQuickBars::Primary);
 		PlayerController->ForceUpdateQuickbar(EFortQuickBars::Secondary);
+		PlayerController->QuickBars->OnRep_PrimaryQuickBar();
+		PlayerController->QuickBars->OnRep_SecondaryQuickBar();
+		PlayerController->WorldInventory->Inventory.MarkArrayDirty();
 	}
 };

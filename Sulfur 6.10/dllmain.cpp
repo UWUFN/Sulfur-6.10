@@ -2,7 +2,6 @@
 #include <iostream>
 #include "minhook/minhook.h"
 #include "Inventory.hpp"
-#include "Abilities.hpp"
 #pragma comment(lib, "minhook/minhook.lib")
 
 void* (*ProcessEvent)(void*, void*, void*);
@@ -122,6 +121,30 @@ void* ProcessEventHook(UObject* Object, UFunction* Function, void* Params)
 			bListening = false;
 	}
 
+	if (FuncName.contains("ServerAttemptAircraftJump"))
+	{
+		auto CurrentParams = (AFortPlayerControllerAthena_ServerAttemptAircraftJump_Params*)Params;
+		auto PlayerController = (AFortPlayerControllerAthena*)Object;
+
+		if (PlayerController->Pawn)
+			return ProcessEvent(Object, Function, Params);
+
+		auto GameState = (AFortGameStateAthena*)Globals::GetWorld()->GameState;
+		auto Aircraft = GameState->GetAircraft(0);
+
+		if (!Aircraft)
+			return ProcessEvent(Object, Function, Params);
+
+		auto Pawn = Globals::GetWorld()->SpawnActor<AFortPlayerPawnAthena>(Aircraft->K2_GetActorLocation(), {});
+		PlayerController->Possess(Pawn);
+
+		Pawn->bCanBeDamaged = true;
+
+	    PlayerController->SetControlRotation(CurrentParams->ClientRotation);
+
+		Inventory::Update(PlayerController);
+	}
+
 	if (FuncName.contains("ServerExecuteInventoryItem"))
 	{
 		auto PlayerController = (AFortPlayerControllerAthena*)Object;
@@ -136,7 +159,7 @@ void* ProcessEventHook(UObject* Object, UFunction* Function, void* Params)
 			if (ItemInstance->ItemEntry.ItemGuid.A == GuidToFind.A && ItemInstance->ItemEntry.ItemGuid.B == GuidToFind.B && ItemInstance->ItemEntry.ItemGuid.C == GuidToFind.C &&
 				ItemInstance->ItemEntry.ItemGuid.D == GuidToFind.D)
 			{
-				((AFortPlayerPawnAthena*)PlayerController->Pawn)->EquipWeaponDefinition((UFortWeaponItemDefinition*)ItemInstance->ItemEntry.ItemDefinition, ItemInstance->ItemEntry.ItemGuid);
+				 ((APlayerPawn_Athena_C*)PlayerController->Pawn)->EquipWeaponDefinition((UFortWeaponItemDefinition*)ItemInstance->ItemEntry.ItemDefinition, ItemInstance->ItemEntry.ItemGuid);
 			}
 		}
 
@@ -151,6 +174,9 @@ void* ProcessEventHook(UObject* Object, UFunction* Function, void* Params)
 			Listen();
 
 			auto GameState = (AFortGameStateAthena*)Globals::GetWorld()->GameState;
+
+			ABuildingFoundation* FloatingIsland = UObject::FindObject<ABuildingFoundation>("LF_Athena_POI_15x15_C Athena_POI_Foundations.Athena_POI_Foundations.PersistentLevel.LF_FloatingIsland");
+			ABuildingFoundation* Lake = UObject::FindObject<ABuildingFoundation>(("LF_Athena_POI_75x75_C Athena_POI_Foundations.Athena_POI_Foundations.PersistentLevel.LF_Lake1"));
 
 			GameState->bGameModeWillSkipAircraft = true;
 			GameState->AircraftStartTime = 99999.0f;
@@ -258,7 +284,6 @@ static inline void SetClientLoginStateHook(UNetConnection* NetConnection, uint8_
 
 		PlayerController->bHasServerFinishedLoading = true;
 		PlayerController->OnRep_bHasServerFinishedLoading();
-		Abilities::ApplyAbilities(Pawn);
 
 		PlayerController->OverriddenBackpackSize = 5;
 
@@ -294,7 +319,7 @@ void Main()
 	FILE* Ptr;
 	freopen_s(&Ptr, "CONOUT$", "w", stdout);
 
-	printf("[+] initializing jaysen's sulfur 6.10.\n");
+	printf("[+] initializing jaysen's sulfur 6.10\n");
 
 	auto ObjectsAddress = Memory::FindPattern("48 8B 05 ?? ?? ?? ?? 48 8B 0C C8 48 8D 04 D1 EB 03 49 8B C6 8B 40 08 C1 E8 1D A8 01 0F 85 D8", true, 3);
 	auto ToStringAddress = Memory::FindPattern("48 89 5C 24 ? 57 48 83 EC 30 83 79 04 00 48 8B DA 48 8B F9");
@@ -317,6 +342,8 @@ void Main()
 	auto vtable = *reinterpret_cast<void***>(static_cast<void*>(Globals::GEngine));
 
 	MH_Initialize();
+	MH_CreateHook(vtable[64], ProcessEventHook, (void**)&ProcessEvent);
+	MH_EnableHook(vtable[64]);
 	MH_CreateHook(vtable[64], ProcessEventHook, (void**)&ProcessEvent);
 	MH_EnableHook(vtable[64]);
 	MH_CreateHook((void*)(BaseAddr + 0x2709580), TickFlushHook, (void**)&TickFlush);
