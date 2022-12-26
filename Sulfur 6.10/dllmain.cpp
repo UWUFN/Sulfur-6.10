@@ -2,6 +2,7 @@
 #include <iostream>
 #include "minhook/minhook.h"
 #include "Inventory.hpp"
+#include "Abilities.hpp"
 #pragma comment(lib, "minhook/minhook.lib")
 
 void* (*ProcessEvent)(void*, void*, void*);
@@ -257,6 +258,7 @@ static inline void SetClientLoginStateHook(UNetConnection* NetConnection, uint8_
 
 		PlayerController->bHasServerFinishedLoading = true;
 		PlayerController->OnRep_bHasServerFinishedLoading();
+		Abilities::GrantGameplayAbilities(Pawn);
 
 		PlayerController->OverriddenBackpackSize = 5;
 
@@ -292,7 +294,7 @@ void Main()
 	FILE* Ptr;
 	freopen_s(&Ptr, "CONOUT$", "w", stdout);
 
-	printf("[+] Inicializando Sulfur 6.10 de Jaysen.\n");
+	printf("[+] initializing jaysen's sulfur 6.10.\n");
 
 	auto ObjectsAddress = Memory::FindPattern("48 8B 05 ?? ?? ?? ?? 48 8B 0C C8 48 8D 04 D1 EB 03 49 8B C6 8B 40 08 C1 E8 1D A8 01 0F 85 D8", true, 3);
 	auto ToStringAddress = Memory::FindPattern("48 89 5C 24 ? 57 48 83 EC 30 83 79 04 00 48 8B DA 48 8B F9");
@@ -317,8 +319,6 @@ void Main()
 	MH_Initialize();
 	MH_CreateHook(vtable[64], ProcessEventHook, (void**)&ProcessEvent);
 	MH_EnableHook(vtable[64]);
-	MH_CreateHook(vtable[64], ProcessEventHook, (void**)&ProcessEvent);
-	MH_EnableHook(vtable[64]);
 	MH_CreateHook((void*)(BaseAddr + 0x2709580), TickFlushHook, (void**)&TickFlush);
 	MH_EnableHook((void*)(BaseAddr + 0x2709580));
 	MH_CreateHook((void*)(BaseAddr + 0x25C98B0), KickPlayerHook, nullptr);
@@ -329,7 +329,7 @@ void Main()
 	MH_CreateHook((void*)GetPlayerViewpointAddress, GetPlayerViewPointDetour, nullptr);
 	MH_EnableHook((void*)GetPlayerViewpointAddress);
 
-	printf("[+] TODO ESTÁ ENGANCHADO. HAGA CLIC EN EL REPRODUCTOR NEGRO NIÑO.\n");
+	printf("[+] hooked all the shit. click play\n");
 	//Start();
 }
 
