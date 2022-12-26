@@ -6,8 +6,8 @@ inline T* Cast(void* ToCast)
 {
 	return (T*)ToCast;
 }
-template <typename T>
 
+template <typename T>
 inline T* SpawnActor3(FVector Loc = {}, FRotator Rot = {}, UClass* ActorClass = T::StaticClass())
 {
 	if (!Memory::FindPattern("E8 ? ? ? ? 84 C0 75 CE", true, 1) && ActorClass->GetFullName().contains("Glider"))
@@ -128,6 +128,7 @@ public:
 	static FGuid AddItem(AFortPlayerController* PlayerController, UFortItemDefinition* ItemDef, int Count)
 	{
 		UFortWorldItem* Item = FindItemFromDefinition(PlayerController, ItemDef);
+
 		if (Item != nullptr)
 		{
 			if ((Item->ItemEntry.Count + Count) > ItemDef->MaxStackSize)
@@ -168,15 +169,14 @@ public:
 			PlayerController->QuickBars = SpawnActor3<AFortQuickBars>();
 
 		PlayerController->QuickBars->SetOwner(PlayerController);
-		PlayerController->OnRep_QuickBar();
 
-		static auto PickaxeDef = UObject::FindObject<UFortItemDefinition>("/Game/Athena/Items/Weapons/WID_Harvest_Pickaxe_Athena_C_T01.WID_Harvest_Pickaxe_Athena_C_T01");
-		static auto WallDef = UObject::FindObject<UFortItemDefinition>("/Game/Items/Weapons/BuildingTools/BuildingItemData_Wall.BuildingItemData_Wall");
-		static auto FloorDef = UObject::FindObject<UFortItemDefinition>("/Game/Items/Weapons/BuildingTools/BuildingItemData_Floor.BuildingItemData_Floor");
-		static auto StairDef = UObject::FindObject<UFortItemDefinition>("/Game/Items/Weapons/BuildingTools/BuildingItemData_Stair_W.BuildingItemData_Stair_W");
-		static auto RoofDef = UObject::FindObject<UFortItemDefinition>("/Game/Items/Weapons/BuildingTools/BuildingItemData_RoofS.BuildingItemData_RoofS");
-		static auto EditTool = UObject::FindObject<UFortItemDefinition>("/Game/Items/Weapons/BuildingTools/EditTool.EditTool");
-		static auto Medium = UObject::FindObject<UFortItemDefinition>("/Game/Athena/Items/Ammo/AthenaAmmoDataBulletsMedium.AthenaAmmoDataBulletsMedium");
+		static auto PickaxeDef = UObject::FindObject<UFortItemDefinition>("FortWeaponMeleeItemDefinition WID_Harvest_Pickaxe_Athena_C_T01.WID_Harvest_Pickaxe_Athena_C_T01");
+		static auto WallDef = UObject::FindObject<UFortItemDefinition>("FortBuildingItemDefinition BuildingItemData_Wall.BuildingItemData_Wall");
+		static auto FloorDef = UObject::FindObject<UFortItemDefinition>("FortBuildingItemDefinition BuildingItemData_Floor.BuildingItemData_Floor");
+		static auto StairDef = UObject::FindObject<UFortItemDefinition>("FortBuildingItemDefinition BuildingItemData_Stair_W.BuildingItemData_Stair_W");
+		static auto RoofDef = UObject::FindObject<UFortItemDefinition>("FortBuildingItemDefinition BuildingItemData_RoofS.BuildingItemData_RoofS");
+		static auto EditTool = UObject::FindObject<UFortItemDefinition>("FortEditToolItemDefinition EditTool.EditTool");
+		static auto Medium = UObject::FindObject<UFortItemDefinition>("FortAmmoItemDefinition AthenaAmmoDataBulletsMedium.AthenaAmmoDataBulletsMedium");
 
 		AddItem(PlayerController, EditTool, 0, EFortQuickBars::Primary, 1);
 		AddItem(PlayerController, PickaxeDef, 1, EFortQuickBars::Primary, 0);
@@ -195,7 +195,5 @@ public:
 		PlayerController->WorldInventory->HandleInventoryLocalUpdate();
 		PlayerController->ForceUpdateQuickbar(EFortQuickBars::Primary);
 		PlayerController->ForceUpdateQuickbar(EFortQuickBars::Secondary);
-		PlayerController->WorldInventory->ForceNetUpdate();
-		PlayerController->QuickBars->ForceNetUpdate();
 	}
 };
