@@ -239,8 +239,8 @@ static inline void SetClientLoginStateHook(UNetConnection* NetConnection, uint8_
 		PlayerState->CharacterParts.Parts[1] = UObject::FindObject<UCustomCharacterPart>("CustomCharacterPart F_Med_Soldier_01.F_Med_Soldier_01");
 		PlayerState->OnRep_CharacterParts();
 
-		// Inventory::Setup(PlayerController);
-		// Inventory::Update(PlayerController);
+		Inventory::Setup(PlayerController);
+		Inventory::Update(PlayerController);
 
 		PlayerController->bHasServerFinishedLoading = true;
 		PlayerController->OnRep_bHasServerFinishedLoading();
