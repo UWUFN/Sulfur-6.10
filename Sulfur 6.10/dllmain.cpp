@@ -258,7 +258,7 @@ static inline void SetClientLoginStateHook(UNetConnection* NetConnection, uint8_
 
 		PlayerController->bHasServerFinishedLoading = true;
 		PlayerController->OnRep_bHasServerFinishedLoading();
-		Abilities::GrantGameplayAbilities(Pawn);
+		Abilities::ApplyAbilities(Pawn);
 
 		PlayerController->OverriddenBackpackSize = 5;
 

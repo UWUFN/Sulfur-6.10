@@ -3,9 +3,11 @@
 
 namespace Abilities
 {
-    FGameplayAbilitySpecHandle(*GiveAbility)(UAbilitySystemComponent*, FGameplayAbilitySpecHandle* outHandle, FGameplayAbilitySpec);
+    inline FGameplayAbilitySpecHandle* (*GiveAbility)(UAbilitySystemComponent* _this, FGameplayAbilitySpecHandle* outHandle, FGameplayAbilitySpec inSpec);
+    inline bool (*InternalTryActivateAbility)(UAbilitySystemComponent* _this, FGameplayAbilitySpecHandle Handle, FPredictionKey InPredictionKey, UGameplayAbility** OutInstancedAbility, void* /* FOnGameplayAbilityEnded::FDelegate* */ OnGameplayAbilityEndedDelegate, FGameplayEventData* TriggerEventData);
+    inline void (*MarkAbilitySpecDirty)(UAbilitySystemComponent* _this, FGameplayAbilitySpec& Spec);
 
-    static void GrantGameplayAbility(APlayerPawn_Athena_C* TargetPawn, UClass* GameplayAbilityClass)
+    static auto GrantGameplayAbility(APlayerPawn_Athena_C* TargetPawn, UClass* GameplayAbilityClass)
     {
         auto AbilitySystemComponent = TargetPawn->AbilitySystemComponent;
 
@@ -16,7 +18,7 @@ namespace Abilities
         {
             FGameplayAbilitySpecHandle Handle{ rand() };
 
-            FGameplayAbilitySpec Spec{ -1, -1, -1, Handle, GameplayAbilityClass->CreateDefaultObject<UGameplayAbility>(), 1, -1, nullptr, 0, false, false, false };
+            FGameplayAbilitySpec Spec{ -1, -1, -1, Handle, (UGameplayAbility*)GameplayAbilityClass->CreateDefaultObject(), 1, -1, nullptr, 0, false, false, false };
 
             return Spec;
         };
@@ -34,21 +36,26 @@ namespace Abilities
         auto Handle = GiveAbility(AbilitySystemComponent, &Spec.Handle, Spec);
     }
 
-    void GrantGameplayAbilities(APlayerPawn_Athena_C* InPawn)
+    inline auto ApplyAbilities(APawn* _Pawn) // TODO: Check if the player already has the ability.
     {
-        static auto AbilitySet = UObject::FindObject<UFortAbilitySet>("FortAbilitySet GAS_DefaultPlayer.GAS_DefaultPlayer");
+        auto Pawn = (APlayerPawn_Athena_C*)_Pawn;
+        static auto SprintAbility = UObject::FindClass("Class FortniteGame.FortGameplayAbility_Sprint");
+        static auto ReloadAbility = UObject::FindClass("Class FortniteGame.FortGameplayAbility_Reload");
+        static auto RangedWeaponAbility = UObject::FindClass("Class FortniteGame.FortGameplayAbility_RangedWeapon");
+        static auto JumpAbility = UObject::FindClass("Class FortniteGame.FortGameplayAbility_Jump");
+        static auto DeathAbility = UObject::FindClass("BlueprintGeneratedClass GA_DefaultPlayer_Death.GA_DefaultPlayer_Death_C");
+        static auto InteractUseAbility = UObject::FindClass("BlueprintGeneratedClass GA_DefaultPlayer_InteractUse.GA_DefaultPlayer_InteractUse_C");
+        static auto InteractSearchAbility = UObject::FindClass("BlueprintGeneratedClass GA_DefaultPlayer_InteractSearch.GA_DefaultPlayer_InteractSearch_C");
+        static auto EmoteAbility = UObject::FindClass("BlueprintGeneratedClass GAB_Emote_Generic.GAB_Emote_Generic_C");
+        static auto TrapAbilitySet = UObject::FindObject<UFortAbilitySet>("FortAbilitySet GAS_TrapGeneric.GAS_TrapGeneric");
 
-        for (int i = 0; i < AbilitySet->GameplayAbilities.Num(); i++)
-        {
-            auto Ability = AbilitySet->GameplayAbilities[i];
-
-            Abilities::GrantGameplayAbility(InPawn, Ability);
-        }
-
-        static auto ShootingAbility = UObject::FindObject<UClass>("BlueprintGeneratedClass GA_Ranged_GenericDamage.GA_Ranged_GenericDamage_C");
-        if (ShootingAbility)
-        {
-            Abilities::GrantGameplayAbility(InPawn, ShootingAbility);
-        }
+        GrantGameplayAbility(Pawn, SprintAbility);
+        GrantGameplayAbility(Pawn, ReloadAbility);
+        GrantGameplayAbility(Pawn, RangedWeaponAbility);
+        GrantGameplayAbility(Pawn, JumpAbility);
+        GrantGameplayAbility(Pawn, DeathAbility);
+        GrantGameplayAbility(Pawn, InteractUseAbility);
+        GrantGameplayAbility(Pawn, InteractSearchAbility);
+        GrantGameplayAbility(Pawn, EmoteAbility);
     }
 }
